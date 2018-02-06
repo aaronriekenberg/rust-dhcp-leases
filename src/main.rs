@@ -11,6 +11,7 @@ use fnv::FnvHashMap;
 use regex::Regex;
 
 use std::borrow::Cow;
+use std::default::Default;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -24,7 +25,7 @@ fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
 
   let re = Regex::new(r"^([A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2})\s+\(hex\)\s+(\S.*)$")?;
 
-  let mut oui_to_organization = OuiToOrganization::default();
+  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
 
   for line in buf_reader.lines() {
     let line_string = line?;
