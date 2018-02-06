@@ -196,18 +196,18 @@ fn main() {
     let lease = ip_to_dhcpd_lease.get(ip).unwrap();
 
     let end = match lease.end {
-      Some(end) => end.to_string(),
-      None => "NA".to_string()
+      Some(end) => Cow::from(end.to_string()),
+      None => Cow::from("NA")
     };
 
     let mac = match lease.mac {
-      Some(mac) => mac.to_hex_string(),
-      None => "NA".to_string()
+      Some(mac) => Cow::from(mac.to_hex_string()),
+      None => Cow::from("NA")
     };
 
     let hostname = match lease.hostname {
-      Some(ref hostname) => hostname.clone(),
-      None => "NA".to_string()
+      Some(ref hostname) => Cow::from(hostname.clone()),
+      None => Cow::from("NA")
     };
 
     let organization = match lease.mac {
