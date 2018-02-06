@@ -23,7 +23,7 @@ fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
 
   let buf_reader = BufReader::new(&file);
 
-  let re = Regex::new(r"^([A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2})\s+\(hex\)\s+(\S.*)$")?;
+  let re = Regex::new(r"^([A-Fa-f0-9]{6})\s+\(base\s16\)\s+(\S.*)$")?;
 
   let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
 
@@ -211,7 +211,7 @@ fn main() {
 
     let oui = match lease.mac {
       Some(mac) => {
-        mac.to_canonical()[..8].to_string().to_uppercase()
+        mac.to_hexadecimal()[2..8].to_string().to_uppercase()
       },
       None => "".to_string()
     };
