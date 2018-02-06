@@ -30,10 +30,8 @@ fn read_oui_file() -> Result<OuiToOrganization, std::io::Error> {
       continue;
     }
 
-    if let Some(i) = line_string.find(char::is_whitespace) {
-      if i == 0 {
-        continue;
-      }
+    if !line_string.chars().next().unwrap().is_alphanumeric() {
+      continue;
     }
 
     let split: Vec<&str> = line_string.split_whitespace().collect();
