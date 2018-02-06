@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-type OuiToOrganization = FnvHashMap<String, String>;
+type OuiToOrganization = FnvHashMap<u32, String>;
 
 fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
   let file = File::open("/usr/local/etc/oui.txt")?;
@@ -35,7 +35,8 @@ fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
         let oui = c.get(1).map_or("", |m| m.as_str());
         let organization = c.get(2).map_or("", |m| m.as_str());
         if (!oui.is_empty()) && (!organization.is_empty()) {
-          oui_to_organization.insert(oui.to_uppercase(), organization.to_string());
+          let oui_u32 = u32::from_str_radix(oui, 16)?;
+          oui_to_organization.insert(oui_u32, organization.to_string());
         }
       },
       None => {}
@@ -209,17 +210,18 @@ fn main() {
       None => "NA".to_string()
     };
 
-    let oui = match lease.mac {
+    let organization = match lease.mac {
       Some(mac) => {
-        mac.to_hexadecimal()[2..8].to_string().to_uppercase()
+        let oui = mac.to_hexadecimal()[2..8].to_string();
+        let oui_u32 = u32::from_str_radix(&oui, 16).expect("error parsing oui");
+        match oui_to_organization.get(&oui_u32) {
+          Some(organization) => Cow::from(organization.clone()),
+          None => Cow::from("NA")
+        }
       },
-      None => "".to_string()
-    };
-
-    let organization = match oui_to_organization.get(&oui) {
-      Some(organization) => Cow::from(organization.clone()),
       None => Cow::from("NA")
     };
+
     println!("{:18}{:28}{:20}{:24}{}", ip, end, mac, hostname, organization);
   }
 }
