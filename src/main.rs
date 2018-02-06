@@ -1,11 +1,14 @@
 extern crate chrono;
 extern crate eui48;
 extern crate fnv;
+extern crate regex;
 
 use chrono::{DateTime, TimeZone};
 use chrono::prelude::Local;
 
 use fnv::FnvHashMap;
+
+use regex::Regex;
 
 use std::borrow::Cow;
 use std::fs::File;
@@ -14,35 +17,28 @@ use std::io::BufReader;
 
 type OuiToOrganization = FnvHashMap<String, String>;
 
-fn read_oui_file() -> Result<OuiToOrganization, std::io::Error> {
-  let file = File::open("/usr/local/etc/oui.txt")?;
+fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
+  //let file = File::open("/usr/local/etc/oui.txt")?;
+  let file = File::open("oui.txt")?;
 
   let buf_reader = BufReader::new(&file);
+
+  let re = Regex::new(r"^([A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2})\s+\(hex\)\s+(\S.*)$")?;
 
   let mut oui_to_organization = OuiToOrganization::default();
 
   for line in buf_reader.lines() {
     let line_string = line?;
 
-    let line_string = line_string.trim();
-
-    if line_string.is_empty() {
-      continue;
-    }
-
-    if !line_string.chars().next().unwrap().is_alphanumeric() {
-      continue;
-    }
-
-    let split: Vec<&str> = line_string.split_whitespace().collect();
-
-    if (split.len() >= 3) && (split[1] == "(hex)") {
-      let mut org = String::new();
-      for i in 2..split.len() {
-        org.push_str(split[i]);
-        org.push(' ');
-      }
-      oui_to_organization.insert(split[0].to_string().to_uppercase(), org);
+    match re.captures(&line_string) {
+      Some(c) => {
+        let oui = c.get(1).map_or("", |m| m.as_str());
+        let organization = c.get(2).map_or("", |m| m.as_str());
+        if (!oui.is_empty()) && (!organization.is_empty()) {
+          oui_to_organization.insert(oui.to_uppercase(), organization.to_string());
+        }
+      },
+      None => {}
     }
   }
 
@@ -85,7 +81,8 @@ impl DhcpdLease {
 type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
-  let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
+  //let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
+  let file = File::open("dhcpd.leases")?;
 
   let buf_reader = BufReader::new(&file);
 
