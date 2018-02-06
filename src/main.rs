@@ -18,8 +18,7 @@ use std::io::BufReader;
 type OuiToOrganization = FnvHashMap<String, String>;
 
 fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
-  //let file = File::open("/usr/local/etc/oui.txt")?;
-  let file = File::open("oui.txt")?;
+  let file = File::open("/usr/local/etc/oui.txt")?;
 
   let buf_reader = BufReader::new(&file);
 
@@ -81,8 +80,7 @@ impl DhcpdLease {
 type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
-  //let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
-  let file = File::open("dhcpd.leases")?;
+  let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
 
   let buf_reader = BufReader::new(&file);
 
