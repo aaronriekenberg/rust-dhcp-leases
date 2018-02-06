@@ -1,23 +1,25 @@
 extern crate chrono;
 extern crate eui48;
+extern crate fnv;
 
 use chrono::{DateTime, TimeZone};
 use chrono::prelude::Local;
 
+use fnv::FnvHashMap;
+
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-type OuiToOrganization = HashMap<String, String>;
+type OuiToOrganization = FnvHashMap<String, String>;
 
 fn read_oui_file() -> Result<OuiToOrganization, std::io::Error> {
   let file = File::open("/usr/local/etc/oui.txt")?;
 
   let buf_reader = BufReader::new(&file);
 
-  let mut oui_to_organization = OuiToOrganization::new();
+  let mut oui_to_organization = OuiToOrganization::default();
 
   for line in buf_reader.lines() {
     let line_string = line?;
@@ -82,7 +84,7 @@ impl DhcpdLease {
 
 }
 
-type IPToDhcpdLease = HashMap<String, DhcpdLease>;
+type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
   let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
@@ -91,7 +93,7 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
   let mut current_lease_option: Option<DhcpdLease> = None;
 
-  let mut ip_to_dhcpd_lease = IPToDhcpdLease::new();
+  let mut ip_to_dhcpd_lease = IPToDhcpdLease::default();
 
   for line in buf_reader.lines() {
     let line_string = line?;
@@ -183,7 +185,7 @@ fn main() {
     Ok(o) => o,
     Err(e) => {
       println!("error reading oui file {}", e);
-      OuiToOrganization::new()
+      OuiToOrganization::default()
     }
   };
 

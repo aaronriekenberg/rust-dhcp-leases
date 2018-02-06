@@ -6,3 +6,4 @@ authors = ["Aaron Riekenberg <aaron.riekenberg@gmail.com>"]
 [dependencies]
 chrono = "0.4.0"
 eui48 = "0.3.0"
+fnv = "1.0.6"
