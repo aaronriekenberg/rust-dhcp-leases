@@ -18,34 +18,6 @@ use std::io::BufReader;
 
 type OuiToOrganization = FnvHashMap<u32, String>;
 
-fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
-  let file = File::open("/usr/local/etc/oui.txt")?;
-
-  let buf_reader = BufReader::new(&file);
-
-  let re = Regex::new(r"^([[:xdigit:]]{6})\s+\(base\s16\)\s+(\S.*)$")?;
-
-  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
-
-  for line in buf_reader.lines() {
-    let line_string = line?;
-
-    match re.captures(&line_string) {
-      Some(c) => {
-        let oui = c.get(1).map_or("", |m| m.as_str());
-        let organization = c.get(2).map_or("", |m| m.as_str());
-        if (!oui.is_empty()) && (!organization.is_empty()) {
-          let oui_u32 = u32::from_str_radix(oui, 16)?;
-          oui_to_organization.insert(oui_u32, organization.to_string());
-        }
-      },
-      None => {}
-    }
-  }
-
-  Ok(oui_to_organization)
-}
-
 #[derive(Debug)]
 struct DhcpdLease {
   ip: String,
@@ -81,8 +53,52 @@ impl DhcpdLease {
 
 type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
+fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
+
+  let oui_file_name = match std::env::var("OUI_FILE") {
+    Ok(val) => Cow::from(val),
+    Err(_) => Cow::from("/usr/local/etc/oui.txt")
+  };
+
+  println!("oui_file_name = {}", oui_file_name);
+
+  let file = File::open(oui_file_name.into_owned())?;
+
+  let buf_reader = BufReader::new(&file);
+
+  let re = Regex::new(r"^([[:xdigit:]]{6})\s+\(base\s16\)\s+(\S.*)$")?;
+
+  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
+
+  for line in buf_reader.lines() {
+    let line_string = line?;
+
+    match re.captures(&line_string) {
+      Some(c) => {
+        let oui = c.get(1).map_or("", |m| m.as_str());
+        let organization = c.get(2).map_or("", |m| m.as_str());
+        if (!oui.is_empty()) && (!organization.is_empty()) {
+          let oui_u32 = u32::from_str_radix(oui, 16)?;
+          oui_to_organization.insert(oui_u32, organization.to_string());
+        }
+      },
+      None => {}
+    }
+  }
+
+  Ok(oui_to_organization)
+}
+
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
-  let file = File::open("/var/lib/dhcp/dhcpd.leases")?;
+
+  let dhcpd_lease_file_name = match std::env::var("DHCPD_LEASES_FILE") {
+    Ok(val) => Cow::from(val),
+    Err(_) => Cow::from("/var/lib/dhcpd/dhcpd.leases")
+  };
+
+  println!("dhcpd_lease_file_name = {}", dhcpd_lease_file_name);
+
+  let file = File::open(dhcpd_lease_file_name.into_owned())?;
 
   let buf_reader = BufReader::new(&file);
 
