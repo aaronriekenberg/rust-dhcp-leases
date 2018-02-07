@@ -199,7 +199,9 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
     for line in buf_reader.lines() {
       let line_string = line?;
 
-      if line_string.is_empty() || (line_string.chars().next() == Some('\t')) {
+      if line_string.is_empty() ||
+         (line_string.chars().nth(0) == Some('\t')) ||
+         (line_string.chars().nth(3) == Some('-')) {
         continue;
       }
 
