@@ -1,15 +1,12 @@
 extern crate chrono;
 extern crate eui48;
 extern crate fnv;
-extern crate regex;
 
 use chrono::{DateTime, TimeZone};
 use chrono::prelude::Local;
 
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-
-use regex::Regex;
 
 use std::borrow::Cow;
 use std::default::Default;
@@ -189,8 +186,6 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
 
   let buf_reader = BufReader::new(&file);
 
-  let re = Regex::new(r"^([[:xdigit:]]{6})\s+\(base\s16\)\s+(\S.*)$")?;
-
   let mut oui_set_mut = oui_set.clone();
 
   let mut oui_to_organization = OuiToOrganization::default();
@@ -199,24 +194,18 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
     for line in buf_reader.lines() {
       let line_string = line?;
 
-      let mut chars = line_string.chars();
-
-      if line_string.is_empty() ||
-         (chars.nth(0) == Some('\t')) ||
-         (chars.nth(2) == Some('-')) {
+      if (line_string.len() < 23) ||
+         (line_string.chars().nth(0) == Some('\t')) ||
+         (line_string.chars().nth(2) == Some('-')) {
         continue;
       }
 
-      match re.captures(&line_string) {
-        Some(c) => {
-          let oui = c.get(1).map_or("", |m| m.as_str()).to_uppercase();
-          if oui_set_mut.contains(&oui) {
-            oui_set_mut.remove(&oui);
-            let organization = c.get(2).map_or("", |m| m.as_str()).to_string();
-            oui_to_organization.insert(oui, organization);
-          }
-        },
-        None => {}
+      let oui = line_string[0..6].to_uppercase();
+      let organization = &line_string[22..];
+
+      if oui_set_mut.contains(&oui) {
+        oui_set_mut.remove(&oui);
+        oui_to_organization.insert(oui, organization.to_string());
       }
 
       if oui_set_mut.is_empty() {
