@@ -193,7 +193,7 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
 
   let mut oui_set_mut = oui_set.clone();
 
-  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
+  let mut oui_to_organization = OuiToOrganization::default();
 
   for line in buf_reader.lines() {
     let line_string = line?;
