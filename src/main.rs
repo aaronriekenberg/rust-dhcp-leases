@@ -93,7 +93,7 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
   let dhcpd_lease_file_name = match std::env::var("DHCPD_LEASES_FILE") {
     Ok(val) => Cow::from(val),
-    Err(_) => Cow::from("/var/lib/dhcpd/dhcpd.leases")
+    Err(_) => Cow::from("/var/lib/dhcp/dhcpd.leases")
   };
 
   println!("dhcpd_lease_file_name = {}", dhcpd_lease_file_name);
