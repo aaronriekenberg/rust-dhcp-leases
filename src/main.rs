@@ -195,23 +195,29 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
 
   let mut oui_to_organization = OuiToOrganization::default();
 
-  for line in buf_reader.lines() {
-    let line_string = line?;
+  if !oui_set_mut.is_empty() {
+    for line in buf_reader.lines() {
+      let line_string = line?;
 
-    match re.captures(&line_string) {
-      Some(c) => {
-        let oui = c.get(1).map_or("", |m| m.as_str()).to_uppercase();
-        let organization = c.get(2).map_or("", |m| m.as_str());
-        if (!oui.is_empty()) && (!organization.is_empty()) && oui_set_mut.contains(&oui) {
-          oui_set_mut.remove(&oui);
-          oui_to_organization.insert(oui, organization.to_string());
-        }
-      },
-      None => {}
-    }
+      if line_string.is_empty() || (line_string.chars().next() == Some('\t')) {
+        continue;
+      }
 
-    if oui_set_mut.is_empty() {
-      break;
+      match re.captures(&line_string) {
+        Some(c) => {
+          let oui = c.get(1).map_or("", |m| m.as_str()).to_uppercase();
+          if oui_set_mut.contains(&oui) {
+            oui_set_mut.remove(&oui);
+            let organization = c.get(2).map_or("", |m| m.as_str()).to_string();
+            oui_to_organization.insert(oui, organization);
+          }
+        },
+        None => {}
+      }
+
+      if oui_set_mut.is_empty() {
+        break;
+      }
     }
   }
 
