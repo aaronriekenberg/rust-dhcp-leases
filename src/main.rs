@@ -7,6 +7,7 @@ use chrono::{DateTime, TimeZone};
 use chrono::prelude::Local;
 
 use fnv::FnvHashMap;
+use fnv::FnvHashSet;
 
 use regex::Regex;
 
@@ -16,7 +17,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-type OuiToOrganization = FnvHashMap<u32, String>;
+type OuiToOrganization = FnvHashMap<String, String>;
 
 #[derive(Debug)]
 struct DhcpdLease {
@@ -53,40 +54,10 @@ impl DhcpdLease {
 
 type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
-fn read_oui_file() -> Result<OuiToOrganization, Box<std::error::Error>> {
+type OuiSet = FnvHashSet<String>;
 
-  let oui_file_name = match std::env::var("OUI_FILE") {
-    Ok(val) => Cow::from(val),
-    Err(_) => Cow::from("/usr/local/etc/oui.txt")
-  };
-
-  println!("oui_file_name = {}", oui_file_name);
-
-  let file = File::open(oui_file_name.into_owned())?;
-
-  let buf_reader = BufReader::new(&file);
-
-  let re = Regex::new(r"^([[:xdigit:]]{6})\s+\(base\s16\)\s+(\S.*)$")?;
-
-  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
-
-  for line in buf_reader.lines() {
-    let line_string = line?;
-
-    match re.captures(&line_string) {
-      Some(c) => {
-        let oui = c.get(1).map_or("", |m| m.as_str());
-        let organization = c.get(2).map_or("", |m| m.as_str());
-        if (!oui.is_empty()) && (!organization.is_empty()) {
-          let oui_u32 = u32::from_str_radix(oui, 16)?;
-          oui_to_organization.insert(oui_u32, organization.to_string());
-        }
-      },
-      None => {}
-    }
-  }
-
-  Ok(oui_to_organization)
+fn mac_to_oui(mac: &eui48::MacAddress) -> String {
+  mac.to_hexadecimal()[2..8].to_uppercase()
 }
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
@@ -191,8 +162,70 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
   Ok(ip_to_dhcpd_lease)
 }
 
+fn get_oui_set(ip_to_dhcpd_lease: &IPToDhcpdLease) -> OuiSet {
+
+  let mut oui_set = OuiSet::default();
+
+  for (_, dhcpd_lease) in ip_to_dhcpd_lease {
+    if let Some(ref mac) = dhcpd_lease.mac {
+      oui_set.insert(mac_to_oui(mac));
+    }
+  }
+
+  oui_set
+
+}
+
+fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::Error>> {
+
+  let oui_file_name = match std::env::var("OUI_FILE") {
+    Ok(val) => Cow::from(val),
+    Err(_) => Cow::from("/usr/local/etc/oui.txt")
+  };
+
+  println!("oui_file_name = {}", oui_file_name);
+
+  let file = File::open(oui_file_name.into_owned())?;
+
+  let buf_reader = BufReader::new(&file);
+
+  let re = Regex::new(r"^([[:xdigit:]]{6})\s+\(base\s16\)\s+(\S.*)$")?;
+
+  let mut oui_set_mut = oui_set.clone();
+
+  let mut oui_to_organization = OuiToOrganization::with_capacity_and_hasher(25000, Default::default());
+
+  for line in buf_reader.lines() {
+    let line_string = line?;
+
+    match re.captures(&line_string) {
+      Some(c) => {
+        let oui = c.get(1).map_or("", |m| m.as_str()).to_uppercase();
+        let organization = c.get(2).map_or("", |m| m.as_str());
+        if (!oui.is_empty()) && (!organization.is_empty()) && oui_set_mut.contains(&oui) {
+          oui_set_mut.remove(&oui);
+          oui_to_organization.insert(oui, organization.to_string());
+        }
+      },
+      None => {}
+    }
+
+    if oui_set_mut.is_empty() {
+      break;
+    }
+  }
+
+  Ok(oui_to_organization)
+}
+
+
 fn main() {
-  let oui_to_organization = match read_oui_file() {
+
+  let ip_to_dhcpd_lease = read_dhcpd_leases().expect("error reading dhcpd.leases");
+
+  let oui_set = get_oui_set(&ip_to_dhcpd_lease);
+
+  let oui_to_organization = match read_oui_file(&oui_set) {
     Ok(o) => o,
     Err(e) => {
       println!("error reading oui file {}", e);
@@ -200,9 +233,7 @@ fn main() {
     }
   };
 
-  let ip_to_dhcpd_lease = read_dhcpd_leases().expect("error reading dhcpd.leases");
-
-  println!("{:18}{:28}{:20}{:24}{}", "IP", "End Time", "MAC", "Hostname", "Organization");
+  println!("\n{:18}{:28}{:20}{:24}{}", "IP", "End Time", "MAC", "Hostname", "Organization");
   println!("====================================================================================================================");
 
   let mut ips: Vec<_> = ip_to_dhcpd_lease.keys().collect();
@@ -212,12 +243,12 @@ fn main() {
     let lease = ip_to_dhcpd_lease.get(ip).unwrap();
 
     let end = match lease.end {
-      Some(end) => Cow::from(end.to_string()),
+      Some(ref end) => Cow::from(end.to_string()),
       None => Cow::from("NA")
     };
 
     let mac = match lease.mac {
-      Some(mac) => Cow::from(mac.to_hex_string()),
+      Some(ref mac) => Cow::from(mac.to_hex_string()),
       None => Cow::from("NA")
     };
 
@@ -227,10 +258,9 @@ fn main() {
     };
 
     let organization = match lease.mac {
-      Some(mac) => {
-        let oui = mac.to_hexadecimal()[2..8].to_string();
-        let oui_u32 = u32::from_str_radix(&oui, 16).expect("error parsing oui");
-        match oui_to_organization.get(&oui_u32) {
+      Some(ref mac) => {
+        let oui = mac_to_oui(mac);
+        match oui_to_organization.get(&oui) {
           Some(organization) => Cow::from(organization.clone()),
           None => Cow::from("NA")
         }
