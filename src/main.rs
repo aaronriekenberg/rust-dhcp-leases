@@ -203,8 +203,7 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
       let oui = line_string[0..6].to_uppercase();
       let organization = &line_string[22..];
 
-      if oui_set_mut.contains(&oui) {
-        oui_set_mut.remove(&oui);
+      if oui_set_mut.remove(&oui) {
         oui_to_organization.insert(oui, organization.to_string());
       }
 
