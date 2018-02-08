@@ -175,7 +175,7 @@ fn get_oui_set(ip_to_dhcpd_lease: &IPToDhcpdLease) -> OuiSet {
 
 }
 
-fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::Error>> {
+fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::error::Error>> {
 
   let oui_file_name = match std::env::var("OUI_FILE") {
     Ok(val) => Cow::from(val),
@@ -188,11 +188,9 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
 
   let buf_reader = BufReader::new(&file);
 
-  let mut oui_set_mut = oui_set.clone();
-
   let mut oui_to_organization = OuiToOrganization::default();
 
-  if !oui_set_mut.is_empty() {
+  if !oui_set.is_empty() {
     for line in buf_reader.lines() {
       let line_string = line?;
 
@@ -207,7 +205,7 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
 
           let organization = &line_string[22..];
 
-          if oui_set_mut.remove(&oui) {
+          if oui_set.remove(&oui) {
             oui_to_organization.insert(oui, organization.to_string());
           }
 
@@ -215,7 +213,7 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
         Err(_) => {}
       }
 
-      if oui_set_mut.is_empty() {
+      if oui_set.is_empty() {
         break;
       }
     }
@@ -231,7 +229,7 @@ fn main() {
 
   let oui_set = get_oui_set(&ip_to_dhcpd_lease);
 
-  let oui_to_organization = match read_oui_file(&oui_set) {
+  let oui_to_organization = match read_oui_file(oui_set) {
     Ok(o) => o,
     Err(e) => {
       println!("error reading oui file {}", e);
