@@ -56,7 +56,7 @@ type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 type OuiSet = FnvHashSet<Oui>;
 
 fn mac_to_oui(mac: &eui48::MacAddress) -> Oui {
-  u32::from_str_radix(&mac.to_hexadecimal()[2..8], 16).expect("error parsing oui")
+  Oui::from_str_radix(&mac.to_hexadecimal()[2..8], 16).expect("error parsing oui")
 }
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
@@ -202,7 +202,7 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
         continue;
       }
 
-      match u32::from_str_radix(&line_string[0..6], 16) {
+      match Oui::from_str_radix(&line_string[0..6], 16) {
         Ok(oui) => {
 
           let organization = &line_string[22..];
