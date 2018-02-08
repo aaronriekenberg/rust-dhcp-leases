@@ -14,7 +14,9 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-type OuiToOrganization = FnvHashMap<String, String>;
+type Oui = u32;
+
+type OuiToOrganization = FnvHashMap<Oui, String>;
 
 #[derive(Debug)]
 struct DhcpdLease {
@@ -51,10 +53,10 @@ impl DhcpdLease {
 
 type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
-type OuiSet = FnvHashSet<String>;
+type OuiSet = FnvHashSet<Oui>;
 
-fn mac_to_oui(mac: &eui48::MacAddress) -> String {
-  mac.to_hexadecimal()[2..8].to_uppercase()
+fn mac_to_oui(mac: &eui48::MacAddress) -> Oui {
+  u32::from_str_radix(&mac.to_hexadecimal()[2..8], 16).expect("error parsing oui")
 }
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
@@ -200,11 +202,17 @@ fn read_oui_file(oui_set: &OuiSet) -> Result<OuiToOrganization, Box<std::error::
         continue;
       }
 
-      let oui = line_string[0..6].to_uppercase();
-      let organization = &line_string[22..];
+      match u32::from_str_radix(&line_string[0..6], 16) {
+        Ok(oui) => {
 
-      if oui_set_mut.remove(&oui) {
-        oui_to_organization.insert(oui, organization.to_string());
+          let organization = &line_string[22..];
+
+          if oui_set_mut.remove(&oui) {
+            oui_to_organization.insert(oui, organization.to_string());
+          }
+
+        },
+        Err(_) => {}
       }
 
       if oui_set_mut.is_empty() {
