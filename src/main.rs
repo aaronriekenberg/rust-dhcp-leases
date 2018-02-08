@@ -42,7 +42,7 @@ impl DhcpdLease {
   fn is_after(&self, other_option: Option<&DhcpdLease>) -> bool {
     match other_option {
       Some(other) => { 
-        self.end.unwrap_or_else(|| Local.timestamp(0, 0)) >= 
+        self.end.unwrap_or_else(|| Local.timestamp(0, 0)) >=
           other.end.unwrap_or_else(|| Local.timestamp(0, 0))
       },
       None => true
