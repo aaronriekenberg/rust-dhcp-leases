@@ -200,9 +200,8 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
       match Oui::from_str_radix(&line_string[0..6], 16) {
         Ok(oui) => {
 
-          let organization = &line_string[22..];
-
           if oui_set.remove(&oui) {
+            let organization = &line_string[22..];
             oui_to_organization.insert(oui, organization.to_string());
           }
 
