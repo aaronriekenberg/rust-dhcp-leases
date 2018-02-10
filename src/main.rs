@@ -222,6 +222,7 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
   Ok(oui_to_organization)
 }
 
+static NA_STRING: &'static str = "NA";
 
 fn main() {
 
@@ -248,17 +249,17 @@ fn main() {
 
     let end = match lease.end {
       Some(ref end) => Cow::from(end.to_string()),
-      None => Cow::from("NA")
+      None => Cow::from(NA_STRING)
     };
 
     let mac = match lease.mac {
       Some(ref mac) => Cow::from(mac.to_hex_string()),
-      None => Cow::from("NA")
+      None => Cow::from(NA_STRING)
     };
 
     let hostname = match lease.hostname {
       Some(ref hostname) => Cow::from(hostname.clone()),
-      None => Cow::from("NA")
+      None => Cow::from(NA_STRING)
     };
 
     let organization = match lease.mac {
@@ -266,10 +267,10 @@ fn main() {
         let oui = mac_to_oui(mac);
         match oui_to_organization.get(&oui) {
           Some(organization) => Cow::from(organization.clone()),
-          None => Cow::from("NA")
+          None => Cow::from(NA_STRING)
         }
       },
-      None => Cow::from("NA")
+      None => Cow::from(NA_STRING)
     };
 
     println!("{:18}{:28}{:20}{:24}{}", ip, end, mac, hostname, organization);
