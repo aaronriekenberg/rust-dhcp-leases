@@ -162,7 +162,7 @@ fn get_oui_set(ip_to_dhcpd_lease: &IPToDhcpdLease) -> OuiSet {
 
   let mut oui_set = OuiSet::default();
 
-  for (_, dhcpd_lease) in ip_to_dhcpd_lease {
+  for dhcpd_lease in ip_to_dhcpd_lease.values() {
     if let Some(ref mac) = dhcpd_lease.mac {
       oui_set.insert(mac_to_oui(mac));
     }
