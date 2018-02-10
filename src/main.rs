@@ -2,8 +2,7 @@ extern crate chrono;
 extern crate eui48;
 extern crate fnv;
 
-use chrono::{DateTime, TimeZone};
-use chrono::prelude::Local;
+use chrono::prelude::{DateTime, Local, TimeZone};
 
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
