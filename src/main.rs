@@ -259,6 +259,8 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
 
     println!("{:18}{:28}{:20}{:24}{}", ip, end, mac, hostname, organization);
   }
+
+  println!("\n{} IPs in use", ip_to_dhcpd_lease.len());
 }
 
 fn main() {
