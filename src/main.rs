@@ -30,7 +30,7 @@ struct DhcpdLease {
 impl DhcpdLease {
 
   fn new(ip: String) -> Self {
-    return DhcpdLease {
+    DhcpdLease {
       ip,
       start: None,
       end: None,
@@ -224,19 +224,7 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
 
 static NA_STRING: &'static str = "NA";
 
-fn main() {
-
-  let ip_to_dhcpd_lease = read_dhcpd_leases().expect("error reading dhcpd.leases");
-
-  let oui_set = get_oui_set(&ip_to_dhcpd_lease);
-
-  let oui_to_organization = match read_oui_file(oui_set) {
-    Ok(o) => o,
-    Err(e) => {
-      println!("error reading oui file {}", e);
-      OuiToOrganization::default()
-    }
-  };
+fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrganization) {
 
   println!("\n{:18}{:28}{:20}{:24}{}", "IP", "End Time", "MAC", "Hostname", "Organization");
   println!("====================================================================================================================");
@@ -275,4 +263,21 @@ fn main() {
 
     println!("{:18}{:28}{:20}{:24}{}", ip, end, mac, hostname, organization);
   }
+}
+
+fn main() {
+
+  let ip_to_dhcpd_lease = read_dhcpd_leases().expect("error reading dhcpd.leases");
+
+  let oui_set = get_oui_set(&ip_to_dhcpd_lease);
+
+  let oui_to_organization = match read_oui_file(oui_set) {
+    Ok(o) => o,
+    Err(e) => {
+      println!("error reading oui file {}", e);
+      OuiToOrganization::default()
+    }
+  };
+
+  print_report(ip_to_dhcpd_lease, oui_to_organization);
 }
