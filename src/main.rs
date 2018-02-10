@@ -2,7 +2,7 @@ extern crate chrono;
 extern crate eui48;
 extern crate fnv;
 
-use chrono::prelude::{DateTime, Local, TimeZone};
+use chrono::prelude::{DateTime, Local, TimeZone, Utc};
 
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
@@ -98,7 +98,7 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
     else {
 
-      if split[0] == "}" {
+      if (split.len() >= 1) && (split[0] == "}") {
         if let Some(current_lease) = current_lease_option {
           if current_lease.is_after(ip_to_dhcpd_lease.get(&current_lease.ip)) {
             ip_to_dhcpd_lease.insert(current_lease.ip.clone(), current_lease);
@@ -109,13 +109,12 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
       else if (split.len() >= 4) && (split[0] == "starts") {
         if let Some(current_lease) = current_lease_option.as_mut() {
-          let mut time = String::new();
-          time.push_str(&split[2].replace("/", "-"));
-          time.push('T');
-          time.push_str(split[3].trim_matches(';'));
-          time.push_str("+00:00");
+          let mut date_time_string = String::new();
+          date_time_string.push_str(&split[2]);
+          date_time_string.push(' ');
+          date_time_string.push_str(split[3].trim_matches(';'));
 
-          let utc_datetime = DateTime::parse_from_rfc3339(&time)?;
+          let utc_datetime = Utc.datetime_from_str(&date_time_string, "%Y/%m/%d %H:%M:%S")?;
 
           let local_datetime = utc_datetime.with_timezone(&Local);
 
@@ -125,13 +124,12 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
       else if (split.len() >= 4) && (split[0] == "ends") {
         if let Some(current_lease) = current_lease_option.as_mut() {
-          let mut time = String::new();
-          time.push_str(&split[2].replace("/", "-"));
-          time.push('T');
-          time.push_str(split[3].trim_matches(';'));
-          time.push_str("+00:00");
+          let mut date_time_string = String::new();
+          date_time_string.push_str(&split[2]);
+          date_time_string.push(' ');
+          date_time_string.push_str(split[3].trim_matches(';'));
 
-          let utc_datetime = DateTime::parse_from_rfc3339(&time)?;
+          let utc_datetime = Utc.datetime_from_str(&date_time_string, "%Y/%m/%d %H:%M:%S")?;
 
           let local_datetime = utc_datetime.with_timezone(&Local);
 
