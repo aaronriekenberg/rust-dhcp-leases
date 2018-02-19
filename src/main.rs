@@ -54,8 +54,12 @@ type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
 
 type OuiSet = FnvHashSet<Oui>;
 
+fn str_to_oui(s: &str) -> Result<Oui, std::num::ParseIntError> {
+  Oui::from_str_radix(s, 16)
+}
+
 fn mac_to_oui(mac: &eui48::MacAddress) -> Oui {
-  Oui::from_str_radix(&mac.to_hexadecimal()[2..8], 16).expect("error parsing oui")
+  str_to_oui(&mac.to_hexadecimal()[2..8]).expect("error parsing oui")
 }
 
 fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
@@ -197,7 +201,7 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
         continue;
       }
 
-      match Oui::from_str_radix(&line_string[0..6], 16) {
+      match str_to_oui(&line_string[0..6]) {
         Ok(oui) => {
 
           if oui_set.remove(&oui) {
