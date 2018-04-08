@@ -12,6 +12,8 @@ use std::default::Default;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::net::IpAddr;
+use std::str::FromStr;
 
 type Oui = u32;
 
@@ -230,7 +232,7 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
   println!("====================================================================================================================");
 
   let mut ips: Vec<_> = ip_to_dhcpd_lease.keys().collect();
-  ips.sort();
+  ips.sort_by_key(|ip_string| IpAddr::from_str(ip_string).expect("invalid ip address string"));
 
   for ip in ips {
     let lease = ip_to_dhcpd_lease.get(ip).unwrap();
