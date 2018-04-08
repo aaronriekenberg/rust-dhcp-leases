@@ -21,22 +21,24 @@ type OuiToOrganization = FnvHashMap<Oui, String>;
 
 #[derive(Debug)]
 struct DhcpdLease {
-  ip: String,
+  ip: IpAddr,
   start: Option<DateTime<Local>>,
   end: Option<DateTime<Local>>,
   mac: Option<eui48::MacAddress>,
-  hostname: Option<String>
+  hostname: Option<String>,
+  abandoned: bool
 }
 
 impl DhcpdLease {
 
-  fn new(ip: String) -> Self {
+  fn new(ip: IpAddr) -> Self {
     DhcpdLease {
       ip,
       start: None,
       end: None,
       mac: None,
-      hostname: None
+      hostname: None,
+      abandoned: false
     }
   }
 
@@ -52,7 +54,7 @@ impl DhcpdLease {
 
 }
 
-type IPToDhcpdLease = FnvHashMap<String, DhcpdLease>;
+type IPToDhcpdLease = FnvHashMap<IpAddr, DhcpdLease>;
 
 type OuiSet = FnvHashSet<Oui>;
 
@@ -98,7 +100,8 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
 
     if current_lease_option.is_none() {
       if (split.len() >= 2) && (split[0] == "lease") && (split[2] == "{") {
-        current_lease_option = Some(DhcpdLease::new(split[1].to_string()));
+        let ip = IpAddr::from_str(split[1]).expect("invalid ip address");
+        current_lease_option = Some(DhcpdLease::new(ip));
       }
     } 
 
@@ -156,6 +159,15 @@ fn read_dhcpd_leases() -> Result<IPToDhcpdLease, Box<std::error::Error>> {
           let hostname = hostname.trim_matches(';').to_string();
           let hostname = hostname.trim_matches('"').to_string();
           current_lease.hostname = Some(hostname);
+        }
+      }
+
+      else if (split.len() >= 3) &&
+              (split[0] == "binding") &&
+              (split[1] == "state") &&
+              (split[2] == "abandoned;") {
+        if let Some(current_lease) = current_lease_option.as_mut() {
+          current_lease.abandoned = true;
         }
       }
     }
@@ -224,18 +236,40 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
   Ok(oui_to_organization)
 }
 
+fn get_dhcp_lease_state(dhcpd_lease: &DhcpdLease) -> &'static str {
+  let now = Local::now();
+  let lease_start = dhcpd_lease.start.unwrap_or_else(|| Local.timestamp(0, 0));
+  let lease_end = dhcpd_lease.end.unwrap_or_else(|| Local.timestamp(0, 0));
+
+  if dhcpd_lease.abandoned {
+    "Abandoned"
+  } else if now < lease_start {
+    "Future"
+  } else if (lease_start <= now) &&
+            (now <= lease_end) {
+    "Current"
+  } else {
+    "Past"
+  }
+}
+
 static NA_STRING: &'static str = "NA";
 
 fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrganization) {
 
-  println!("\n{:18}{:28}{:20}{:24}{}", "IP", "End Time", "MAC", "Hostname", "Organization");
-  println!("====================================================================================================================");
+  println!("\n{:18}{:11}{:28}{:20}{:24}{}", "IP", "State", "End Time", "MAC", "Hostname", "Organization");
+  for _ in 0..128 {
+    print!("=");
+  }
+  println!();
 
   let mut ips: Vec<_> = ip_to_dhcpd_lease.keys().collect();
-  ips.sort_by_key(|ip_string| IpAddr::from_str(ip_string).expect("invalid ip address string"));
+  ips.sort();
 
   for ip in ips {
     let lease = ip_to_dhcpd_lease.get(ip).unwrap();
+
+    let state = get_dhcp_lease_state(&lease);
 
     let end = match lease.end {
       Some(ref end) => Cow::from(end.to_string()),
@@ -263,7 +297,7 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
       None => Cow::from(NA_STRING)
     };
 
-    println!("{:18}{:28}{:20}{:24}{}", ip, end, mac, hostname, organization);
+    println!("{:18}{:11}{:28}{:20}{:24}{}", ip.to_string(), state, end, mac, hostname, organization);
   }
 
   println!("\n{} IPs in use", ip_to_dhcpd_lease.len());
