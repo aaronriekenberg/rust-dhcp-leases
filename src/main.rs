@@ -1,4 +1,6 @@
 extern crate chrono;
+#[macro_use]
+extern crate enum_map;
 extern crate eui48;
 extern crate fnv;
 
@@ -13,6 +15,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::net::IpAddr;
+use std::slice::Iter;
 use std::str::FromStr;
 
 type Oui = u32;
@@ -236,20 +239,50 @@ fn read_oui_file(mut oui_set: OuiSet) -> Result<OuiToOrganization, Box<std::erro
   Ok(oui_to_organization)
 }
 
-fn get_dhcp_lease_state(dhcpd_lease: &DhcpdLease) -> &'static str {
+#[derive(Copy, Clone, Debug, EnumMap)]
+enum DhcpLeaseState {
+  Abandoned,
+  Future,
+  Current,
+  Past
+}
+
+impl DhcpLeaseState {
+
+  pub fn iterator() -> Iter<'static, DhcpLeaseState> {
+    static VALUES: [DhcpLeaseState; 4] = 
+      [DhcpLeaseState::Abandoned,
+       DhcpLeaseState::Future,
+       DhcpLeaseState::Current,
+       DhcpLeaseState::Past];
+    VALUES.into_iter()
+  }
+
+  pub fn to_string(self) -> &'static str {
+    match self {
+      DhcpLeaseState::Abandoned => "Abandoned",
+      DhcpLeaseState::Future => "Future",
+      DhcpLeaseState::Current => "Current",
+      DhcpLeaseState::Past => "Past"
+    }
+  }
+
+}
+
+fn get_dhcp_lease_state(dhcpd_lease: &DhcpdLease) -> DhcpLeaseState {
   let now = Local::now();
   let lease_start = dhcpd_lease.start.unwrap_or_else(|| Local.timestamp(0, 0));
   let lease_end = dhcpd_lease.end.unwrap_or_else(|| Local.timestamp(0, 0));
 
   if dhcpd_lease.abandoned {
-    "Abandoned"
+    DhcpLeaseState::Abandoned
   } else if now < lease_start {
-    "Future"
+    DhcpLeaseState::Future
   } else if (lease_start <= now) &&
             (now <= lease_end) {
-    "Current"
+    DhcpLeaseState::Current
   } else {
-    "Past"
+    DhcpLeaseState::Past
   }
 }
 
@@ -263,6 +296,10 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
   }
   println!();
 
+  let mut state_to_count = enum_map! {
+    _ => 0
+  };
+
   let mut ips: Vec<_> = ip_to_dhcpd_lease.keys().collect();
   ips.sort();
 
@@ -270,6 +307,10 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
     let lease = ip_to_dhcpd_lease.get(ip).unwrap();
 
     let state = get_dhcp_lease_state(&lease);
+
+    let state_string = state.to_string();
+
+    state_to_count[state] += 1;
 
     let end = match lease.end {
       Some(ref end) => Cow::from(end.to_string()),
@@ -297,10 +338,13 @@ fn print_report(ip_to_dhcpd_lease: IPToDhcpdLease, oui_to_organization: OuiToOrg
       None => Cow::from(NA_STRING)
     };
 
-    println!("{:18}{:11}{:28}{:20}{:24}{}", ip.to_string(), state, end, mac, hostname, organization);
+    println!("{:18}{:11}{:28}{:20}{:24}{}", ip.to_string(), state_string, end, mac, hostname, organization);
   }
 
-  println!("\n{} IPs in use", ip_to_dhcpd_lease.len());
+  println!("\n{} leases with unique IPs:", ip_to_dhcpd_lease.len());
+  for state in DhcpLeaseState::iterator() {
+    println!("\t{} {}", state_to_count[*state], state.to_string());
+  }
 }
 
 fn main() {
