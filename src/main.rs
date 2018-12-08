@@ -1,10 +1,6 @@
-extern crate chrono;
-#[macro_use]
-extern crate enum_map;
-extern crate eui48;
-extern crate fnv;
-
 use chrono::prelude::{DateTime, Local, TimeZone, Utc};
+
+use enum_map::{enum_map, EnumMap};
 
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
